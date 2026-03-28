@@ -1,22 +1,10 @@
-import React, { useState, createContext, useContext, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { AppLayout, SideNavigation } from '@cloudscape-design/components';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Demo from './pages/Demo';
 import Playground from './pages/Playground';
-
-interface LayoutContextType {
-  setSurface: (id: string, node: React.ReactNode) => void;
-  setToolsOpen: (open: boolean) => void;
-}
-
-export const LayoutContext = createContext<LayoutContextType | null>(null);
-
-export function useLayout() {
-  const ctx = useContext(LayoutContext);
-  if (!ctx) throw new Error('useLayout must be used within LayoutContext');
-  return ctx;
-}
+import { LayoutContext } from './hooks/useLayout';
 
 function Navigation() {
   const navigate = useNavigate();

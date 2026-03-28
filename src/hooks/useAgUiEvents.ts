@@ -1,6 +1,46 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AgUiEvent, OutboundClientEvent } from '../types/agui';
 
+/**
+ * Mock implementation of the AG-UI event stream hook.
+ *
+ * This hook simulates the temporal behavior of a real agent backend:
+ * 1. Emits an `ACTION_REQUIRED` event after a short delay (simulating agent reasoning)
+ * 2. On `USER_RESPONSE`, simulates tool execution, state deltas, and A2UI renders
+ *
+ * ## Integrating with a Real Backend
+ *
+ * To connect this renderer to a live AG-UI event source, replace this hook
+ * with one that subscribes to your backend via WebSocket, SSE, or polling:
+ *
+ * ```ts
+ * export function useAgUiEvents(endpoint: string) {
+ *   const [events, setEvents] = useState<AgUiEvent[]>([]);
+ *
+ *   useEffect(() => {
+ *     const source = new EventSource(endpoint);
+ *     source.onmessage = (msg) => {
+ *       const event: AgUiEvent = JSON.parse(msg.data);
+ *       setEvents(prev => [...prev, event]);
+ *     };
+ *     return () => source.close();
+ *   }, [endpoint]);
+ *
+ *   const emitEvent = useCallback(async (event: OutboundClientEvent) => {
+ *     await fetch(endpoint, {
+ *       method: 'POST',
+ *       headers: { 'Content-Type': 'application/json' },
+ *       body: JSON.stringify(event),
+ *     });
+ *   }, [endpoint]);
+ *
+ *   return { events, emitEvent };
+ * }
+ * ```
+ *
+ * The `ProtocolBridge` component is agnostic to the event source — it only
+ * requires `events: AgUiEvent[]` and `emitEvent: (e: OutboundClientEvent) => Promise<void>`.
+ */
 export function useAgUiEvents() {
   const [events, setEvents] = useState<AgUiEvent[]>([]);
 

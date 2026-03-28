@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import ProtocolBridge from '../components/ProtocolBridge';
 import TraceSidebar from '../components/TraceSidebar';
 import { useAgUiEvents } from '../hooks/useAgUiEvents';
-import { useLayout } from '../App';
+import { useLayout } from '../hooks/useLayout';
 
 export default function Demo() {
   const { events, emitEvent } = useAgUiEvents();

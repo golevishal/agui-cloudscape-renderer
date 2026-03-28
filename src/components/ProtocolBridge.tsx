@@ -1,12 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import Alert from '@cloudscape-design/components/alert';
 import A2UITableRenderer from './A2UITableRenderer';
 import SurfaceRenderer from './SurfaceRenderer';
 import A2UIPropertyRedact from './A2UIPropertyRedact';
 import A2UIRenderer from './A2UIRenderer';
-import { A2UIStore, A2UIStateProvider, useA2UIStore } from '../hooks/useA2UIState';
-import { useLayout } from '../App';
+import { A2UIStore } from '../stores/A2UIStore';
+import { A2UIStateProvider } from './A2UIStateProvider';
+import { useA2UIStore } from '../hooks/useA2UIState';
+import { useLayout } from '../hooks/useLayout';
 import type { AgUiEvent, OutboundClientEvent, A2UITablePayload, A2UIPropertyRedactPayload, A2UICatalogPayload } from '../types/agui';
 
 interface ProtocolBridgeProps {
@@ -14,26 +16,34 @@ interface ProtocolBridgeProps {
   emitEvent: (event: OutboundClientEvent) => Promise<void>;
 }
 
+interface PayloadWithSurface {
+  surface?: string;
+}
+
 export default function ProtocolBridge({ events, emitEvent }: ProtocolBridgeProps) {
   const [store] = useState(() => new A2UIStore());
   const processedLengthRef = useRef(0);
 
-  if (events.length > processedLengthRef.current) {
-    const newEvents = events.slice(processedLengthRef.current);
-    for (const event of newEvents) {
-      if (event.type === 'DATA_MODEL_UPDATE') {
-        store.mergeState(event.payload);
+  // Process DATA_MODEL_UPDATE events in an effect instead of during render
+  useEffect(() => {
+    if (events.length > processedLengthRef.current) {
+      const newEvents = events.slice(processedLengthRef.current);
+      for (const event of newEvents) {
+        if (event.type === 'DATA_MODEL_UPDATE') {
+          store.mergeState(event.payload);
+        }
       }
+      processedLengthRef.current = events.length;
     }
-    processedLengthRef.current = events.length;
-  }
+  }, [events, store]);
 
   // Group events by target surface ID
   const activeSurfaces = React.useMemo(() => {
     const map: Record<string, AgUiEvent> = {};
     for (const e of events) {
       if (e.type === 'DATA_MODEL_UPDATE' || e.type === 'TOOL_CALL_END') continue;
-      const s = (e.payload as any).surface || 'main';
+      const payload = e.payload as PayloadWithSurface;
+      const s = payload.surface || 'main';
       map[s] = e;
     }
     return map;

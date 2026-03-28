@@ -14,19 +14,29 @@ export default function A2UIRenderer({ rootId, components }: A2UIRendererProps) 
   return <ComponentRenderer id={rootId} components={components} />;
 }
 
+/**
+ * Safely extracts a named string property from a catalog component if it exists.
+ * This avoids `as any` casts by narrowing via an `in` check.
+ */
+function getComponentProp(component: AnyCatalogComponent, prop: string): string | undefined {
+  if (prop in component) {
+    return (component as unknown as Record<string, unknown>)[prop] as string | undefined;
+  }
+  return undefined;
+}
+
 function ComponentRenderer({ id, components }: { id: string; components: Record<string, AnyCatalogComponent> }) {
   const component = components[id];
   
   // Conditionally hook calls are illegal, so we unconditionally bind the common properties
   // that support data-binding. Components that don't have these properties simply pass undefined.
-  const text = useA2UIStateProperty((component as any)?.text);
-  const value = useA2UIStateProperty((component as any)?.value);
-  const label = useA2UIStateProperty((component as any)?.label);
-  const url = useA2UIStateProperty((component as any)?.url);
-  const description = useA2UIStateProperty((component as any)?.description);
+  const text = useA2UIStateProperty(getComponentProp(component, 'text'));
+  const value = useA2UIStateProperty(getComponentProp(component, 'value'));
+  const label = useA2UIStateProperty(getComponentProp(component, 'label'));
+  const url = useA2UIStateProperty(getComponentProp(component, 'url'));
+  const description = useA2UIStateProperty(getComponentProp(component, 'description'));
 
   if (!component) return <div style={{ color: 'red' }}>[Missing ID: {id}]</div>;
-    if (!component) return <div key={id} style={{ color: 'red' }}>[Missing ID: {id}]</div>;
 
     switch (component.component) {
       case 'Text': {
