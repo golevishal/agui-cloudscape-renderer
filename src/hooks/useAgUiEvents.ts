@@ -14,9 +14,9 @@ export function useAgUiEvents() {
           title: 'Launch New EC2 Instance',
           description: 'The agent needs some details to complete the deployment.',
           fields: [
-            { type: 'string', name: 'instanceName', label: 'Instance Name', required: true, defaultValue: 'ag-ui-demo' },
+            { type: 'string', name: 'instanceName', label: 'Instance Name', required: true, defaultValue: 'ag-ui-demo', minLength: 3, maxLength: 64, pattern: '^[a-zA-Z][a-zA-Z0-9\\-]*$', constraintText: 'Letters, numbers, and hyphens. Must start with a letter.' },
             { type: 'enum', name: 'instanceType', label: 'Instance Type', options: ['t3.micro', 'm5.large', 'c5.xlarge'], defaultValue: 't3.micro', required: true },
-            { type: 'boolean', name: 'enableMonitoring', label: 'Enable Detailed Monitoring', defaultValue: false }
+            { type: 'boolean', name: 'enableMonitoring', label: 'Enable Detailed Monitoring', defaultValue: false, required: true, errorMessage: 'You must enable monitoring for production deployments.' }
           ]
         }
       }]);
@@ -39,31 +39,70 @@ export function useAgUiEvents() {
         }
       }]);
 
-      // Agent succeeds and returns a database token redact view
       setTimeout(() => {
         setEvents(prev => [...prev, {
-          type: 'A2UI_RENDER',
-          payload: {
-            componentName: 'PropertyRedact',
-            label: 'Temporary SSH Access Key',
-            content: 'ssh-rsa AAAAB3NzaC1yc... ag-ui-agent'
-          }
+           type: 'STATE_DELTA',
+           payload: { state: 'Validating', message: 'Checking VPC configurations in target region.' }
         }]);
-      }, 1500);
+      }, 700);
 
-      // Then returns the table view
+      // Agent succeeds and returns a Catalog view with live data binding
       setTimeout(() => {
-        setEvents(prev => [...prev, {
-          type: 'A2UI_RENDER',
-          payload: {
-            componentName: 'Table',
-            headers: ['InstanceId', 'Type', 'Status', 'Monitoring'],
-            rows: [
-              { "InstanceId": "i-09999999newlycreated", "Type": String(event.payload.data.instanceType), "Monitoring": event.payload.data.enableMonitoring ? 'Enabled' : 'Disabled', "Status": "Success" }
-            ]
+        setEvents(prev => [
+          ...prev,
+          {
+            type: 'DATA_MODEL_UPDATE',
+            payload: { deployment: { message: 'Starting instances...', pct: '10%' } }
+          },
+          {
+            type: 'A2UI_RENDER',
+            payload: {
+              surface: 'tools',
+              componentName: 'PropertyRedact',
+              label: 'Side-channel Deployment Token',
+              content: 'sec-awsx-299388-abcd'
+            }
+          },
+          {
+            type: 'A2UI_RENDER',
+            payload: {
+              surface: 'main',
+              rootId: 'deployRoot',
+              components: {
+                'deployRoot': { component: 'Card', child: 'deployVStack' },
+                'deployVStack': { component: 'Column', children: ['title', 'statusText', 'progressText'] },
+                'title': { component: 'Text', variant: 'h2', text: 'Live Deployment Status' },
+                'statusText': { component: 'Text', text: '$/deployment/message' },
+                'progressText': { component: 'Text', variant: 'h1', text: '$/deployment/pct' },
+              }
+            }
           }
-        }]);
-      }, 5000);
+        ]);
+
+        // Dispatch a follow-up DATA_MODEL_UPDATE
+        setTimeout(() => {
+          setEvents(prev => [...prev, {
+            type: 'DATA_MODEL_UPDATE',
+            payload: { deployment: { message: 'Configuring networking...', pct: '45%' } }
+          }]);
+        }, 1500);
+
+        // Dispatch final DATA_MODEL_UPDATE
+        setTimeout(() => {
+          setEvents(prev => [
+            ...prev,
+            {
+              type: 'DATA_MODEL_UPDATE',
+              payload: { deployment: { message: 'Deployment complete', pct: '100%' } }
+            },
+            {
+              type: 'TOOL_CALL_END',
+              payload: { toolName: 'launchEC2Instance', resultStatus: 'success' }
+            }
+          ]);
+        }, 3000);
+
+      }, 1500);
     }
   }, []);
 

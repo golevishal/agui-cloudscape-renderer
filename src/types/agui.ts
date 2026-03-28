@@ -1,10 +1,18 @@
-export type AgUiEvent = ToolCallStartEvent | StateDeltaEvent | A2UIRenderEvent | ActionRequiredEvent;
+export type AgUiEvent = ToolCallStartEvent | ToolCallEndEvent | StateDeltaEvent | A2UIRenderEvent | ActionRequiredEvent | DataModelUpdateEvent;
 
 export interface ToolCallStartEvent {
   type: 'TOOL_CALL_START';
   payload: {
     toolName: string;
     description?: string;
+  };
+}
+
+export interface ToolCallEndEvent {
+  type: 'TOOL_CALL_END';
+  payload: {
+    toolName: string;
+    resultStatus: 'success' | 'error';
   };
 }
 
@@ -16,13 +24,20 @@ export interface StateDeltaEvent {
   };
 }
 
+export interface DataModelUpdateEvent {
+  type: 'DATA_MODEL_UPDATE';
+  payload: Record<string, unknown>;
+}
+
 export interface A2UITablePayload {
+  surface?: string;
   componentName: 'Table';
   headers: string[];
   rows: Record<string, string | number | boolean | null>[];
 }
 
 export interface A2UIPropertyRedactPayload {
+  surface?: string;
   componentName: 'PropertyRedact';
   label?: string;
   content: string;
@@ -34,6 +49,7 @@ export interface A2UIRenderEvent {
 }
 
 export interface A2UICatalogPayload {
+  surface?: string;
   rootId: string;
   components: Record<string, AnyCatalogComponent>;
 }
@@ -157,14 +173,48 @@ export type AnyCatalogComponent =
   | A2UIChoicePicker
   | A2UIDateTimeInput;
 
-export type FieldDefinition = 
-  | { type: 'string'; name: string; label: string; required?: boolean; defaultValue?: string }
-  | { type: 'boolean'; name: string; label: string; defaultValue?: boolean }
-  | { type: 'enum'; name: string; label: string; options: string[]; required?: boolean; defaultValue?: string };
+interface FieldValidationBase {
+  /** Custom error message override. If omitted, a sensible default is generated. */
+  errorMessage?: string;
+  /** Hint text shown below the field before any error, e.g. "Must be 3-64 characters" */
+  constraintText?: string;
+}
+
+export type FieldDefinition =
+  | FieldValidationBase & {
+      type: 'string';
+      name: string;
+      label: string;
+      required?: boolean;
+      defaultValue?: string;
+      /** Regex pattern the value must match (tested via new RegExp) */
+      pattern?: string;
+      /** Minimum character length */
+      minLength?: number;
+      /** Maximum character length */
+      maxLength?: number;
+    }
+  | FieldValidationBase & {
+      type: 'boolean';
+      name: string;
+      label: string;
+      defaultValue?: boolean;
+      /** If true, the checkbox must be checked to submit */
+      required?: boolean;
+    }
+  | FieldValidationBase & {
+      type: 'enum';
+      name: string;
+      label: string;
+      options: string[];
+      required?: boolean;
+      defaultValue?: string;
+    };
 
 export interface ActionRequiredEvent {
   type: 'ACTION_REQUIRED';
   payload: {
+    surface?: string;
     formId: string;
     title: string;
     description?: string;

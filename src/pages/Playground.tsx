@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ColumnLayout, Textarea, Select, Alert, Container, Header } from '@cloudscape-design/components';
 import ProtocolBridge from '../components/ProtocolBridge';
-import type { AgUiEvent, AnyCatalogComponent } from '../types/agui';
+import type { AgUiEvent, AnyCatalogComponent, OutboundClientEvent } from '../types/agui';
 
 const generatePayload = (rootId: string, components: Record<string, AnyCatalogComponent>) => ({
   type: 'A2UI_RENDER',
@@ -26,8 +26,12 @@ const TEMPLATES: Record<string, unknown> = {
     payload: {
       formId: 'dev-form',
       title: 'Developer Test Form',
-      description: 'A mock form for playground testing.',
-      fields: [{ type: 'string', name: 'demoParam', label: 'Parameter', required: true }]
+      description: 'A mock HITL form with validation rules. Try submitting with an empty field.',
+      fields: [
+        { type: 'string', name: 'demoParam', label: 'Parameter', required: true, minLength: 2, maxLength: 128, pattern: '^[a-zA-Z_][a-zA-Z0-9_]*$', constraintText: 'Identifier format: letters, digits, underscores.' },
+        { type: 'enum', name: 'region', label: 'Region', options: ['us-east-1', 'eu-west-1', 'ap-southeast-1'], required: true },
+        { type: 'boolean', name: 'confirm', label: 'I confirm this action is intentional', required: true, errorMessage: 'You must confirm before proceeding.' }
+      ]
     }
   },
   trace: {
@@ -38,6 +42,18 @@ const TEMPLATES: Record<string, unknown> = {
       content: 'sk-live-fake-token-do-not-share'
     }
   },
+  multisurface: [
+    generatePayload('c1', { c1: { component: 'Text', text: 'This rendering engine navigates Cloudscape layouts directly from the protocol event arrays!', variant: 'body' } }),
+    {
+      type: 'A2UI_RENDER',
+      payload: {
+        surface: 'tools',
+        componentName: 'PropertyRedact',
+        label: 'Side-panel UI Widget',
+        content: 'I am rendering securely in the Cloudscape tools panel!'
+      }
+    }
+  ],
 
   // Individually Isolated Catalog Primitives
   text: generatePayload('c1', { c1: { component: 'Text', text: 'Hello Cloudscape', variant: 'h2' } }),
@@ -104,11 +120,15 @@ export default function Playground() {
   const parsedEvents = useMemo(() => {
     try {
       const parsed = JSON.parse(jsonInput);
-      return [parsed as AgUiEvent];
+      return Array.isArray(parsed) ? parsed as AgUiEvent[] : [parsed as AgUiEvent];
     } catch {
       return null;
     }
   }, [jsonInput]);
+
+  const mockEmitEvent = useCallback(async (e: OutboundClientEvent) => {
+    console.log('Mock emitted event:', e);
+  }, []);
 
   return (
     <Container header={<Header variant="h2">Interactive Protocol Playground</Header>}>
@@ -132,7 +152,7 @@ export default function Playground() {
           {parsedEvents ? (
             <ProtocolBridge 
               events={parsedEvents} 
-              emitEvent={async (e) => console.log('Mock emitted event:', e)} 
+              emitEvent={mockEmitEvent} 
             />
           ) : (
             <Alert type="error" header="Invalid JSON">

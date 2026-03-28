@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Box, Icon, SpaceBetween, Container, Tabs, Button, Input, Checkbox, Select, DatePicker, Modal as CloudscapeModal
 } from '@cloudscape-design/components';
+import { useA2UIStateProperty } from '../hooks/useA2UIState';
 import type { AnyCatalogComponent } from '../types/agui';
 
 interface A2UIRendererProps {
@@ -10,8 +11,21 @@ interface A2UIRendererProps {
 }
 
 export default function A2UIRenderer({ rootId, components }: A2UIRendererProps) {
-  const renderComponent = (id: string): React.ReactNode => {
-    const component = components[id];
+  return <ComponentRenderer id={rootId} components={components} />;
+}
+
+function ComponentRenderer({ id, components }: { id: string; components: Record<string, AnyCatalogComponent> }) {
+  const component = components[id];
+  
+  // Conditionally hook calls are illegal, so we unconditionally bind the common properties
+  // that support data-binding. Components that don't have these properties simply pass undefined.
+  const text = useA2UIStateProperty((component as any)?.text);
+  const value = useA2UIStateProperty((component as any)?.value);
+  const label = useA2UIStateProperty((component as any)?.label);
+  const url = useA2UIStateProperty((component as any)?.url);
+  const description = useA2UIStateProperty((component as any)?.description);
+
+  if (!component) return <div style={{ color: 'red' }}>[Missing ID: {id}]</div>;
     if (!component) return <div key={id} style={{ color: 'red' }}>[Missing ID: {id}]</div>;
 
     switch (component.component) {
@@ -19,83 +33,80 @@ export default function A2UIRenderer({ rootId, components }: A2UIRendererProps) 
         let boxVariant: "h1" | "h2" | "h3" | "h4" | "h5" | "p" | "small" = 'p';
         if (component.variant === 'caption') boxVariant = 'small';
         else if (component.variant && component.variant !== 'body') boxVariant = component.variant;
-        return <Box key={id} variant={boxVariant}>{component.text}</Box>;
+        return <Box variant={boxVariant}>{text as string}</Box>;
       }
       case 'Image':
-        return <img key={id} src={component.url} alt={component.description} style={{ maxWidth: '100%', objectFit: (component.fit === 'scaleDown' ? 'scale-down' : component.fit) || 'fill' }} />;
+        return <img src={url as string} alt={description as string} style={{ maxWidth: '100%', objectFit: (component.fit === 'scaleDown' ? 'scale-down' : component.fit) || 'fill' }} />;
         
       case 'Icon':
-        return <Icon key={id} name={typeof component.name === 'string' ? component.name as React.ComponentProps<typeof Icon>['name'] : 'star'} />;
+        return <Icon name={typeof component.name === 'string' ? component.name as React.ComponentProps<typeof Icon>['name'] : 'star'} />;
         
       case 'Row':
         return (
-          <SpaceBetween key={id} direction="horizontal" size="m">
-            {component.children.map(childId => <div key={childId}>{renderComponent(childId)}</div>)}
+          <SpaceBetween direction="horizontal" size="m">
+            {component.children.map(childId => <ComponentRenderer key={childId} id={childId} components={components} />)}
           </SpaceBetween>
         );
         
       case 'Column':
       case 'List':
         return (
-          <SpaceBetween key={id} direction="vertical" size="m">
-            {component.children.map(childId => <div key={childId}>{renderComponent(childId)}</div>)}
+          <SpaceBetween direction="vertical" size="m">
+            {component.children.map(childId => <ComponentRenderer key={childId} id={childId} components={components} />)}
           </SpaceBetween>
         );
         
       case 'Card':
-        return <Container key={id}>{renderComponent(component.child)}</Container>;
+        return <Container><ComponentRenderer id={component.child} components={components} /></Container>;
         
       case 'Tabs':
         return (
           <Tabs
-            key={id}
             tabs={component.tabs.map((tab, idx) => ({
               id: `${id}-tab-${idx}`,
               label: tab.title,
-              content: renderComponent(tab.child)
+              content: <ComponentRenderer id={tab.child} components={components} />
             }))}
           />
         );
         
       case 'Modal':
-        return <ModalWrapper key={id} trigger={renderComponent(component.trigger)} content={renderComponent(component.content)} />;
+        return <ModalWrapper trigger={<ComponentRenderer id={component.trigger} components={components} />} content={<ComponentRenderer id={component.content} components={components} />} />;
         
       case 'Divider':
-        return <hr key={id} style={{ border: 'none', borderTop: '1px solid var(--color-border-divider-default)', margin: '16px 0' }} />;
+        return <hr style={{ border: 'none', borderTop: '1px solid var(--color-border-divider-default)', margin: '16px 0' }} />;
         
       case 'Button':
         return (
-          <Button key={id} variant={component.variant === 'primary' ? 'primary' : 'normal'}>
-            {renderComponent(component.child)}
+          <Button variant={component.variant === 'primary' ? 'primary' : 'normal'}>
+            <ComponentRenderer id={component.child} components={components} />
           </Button>
         );
         
       case 'TextField':
-        return <Input key={id} value={component.value || ''} onChange={() => {}} placeholder={component.label} />;
+        return <Input value={(value as string) || ''} onChange={() => {}} placeholder={label as string} />;
         
       case 'CheckBox':
-        return <Checkbox key={id} checked={component.value} onChange={() => {}}>{component.label}</Checkbox>;
+        return <Checkbox checked={!!value} onChange={() => {}}>{label as React.ReactNode}</Checkbox>;
         
-      case 'ChoicePicker':
+      case 'ChoicePicker': {
+        const selectedValues = Array.isArray(value) ? value : [value];
         return (
           <Select
-            key={id}
-            selectedOption={component.value?.[0] ? { label: component.value[0], value: component.value[0] } : null}
+            selectedOption={selectedValues[0] ? { label: selectedValues[0] as string, value: selectedValues[0] as string } : null}
             onChange={() => {}}
             options={component.options.map(opt => ({ label: opt.label, value: opt.value }))}
-            placeholder={component.label}
+            placeholder={label as string}
           />
         );
+      }
         
       case 'DateTimeInput':
-        return <DatePicker key={id} value={component.value} onChange={() => {}} placeholder="YYYY/MM/DD" />;
+        return <DatePicker value={value as string} onChange={() => {}} placeholder="YYYY/MM/DD" />;
         
       default:
-        return <div key={id}>Unsupported Component</div>;
+        return <div>Unsupported Component</div>;
     }
-  };
-
-  return <>{renderComponent(rootId)}</>;
 }
 
 function ModalWrapper({ trigger, content }: { trigger: React.ReactNode; content: React.ReactNode }) {
