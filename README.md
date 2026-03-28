@@ -1,6 +1,6 @@
 # AUI Cloudscape Renderer
 
-[![CI](https://github.com/YOUR_USERNAME/aui-cloudscape-renderer/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/aui-cloudscape-renderer/actions/workflows/ci.yml)
+[![CI](https://github.com/golevishal/aui-cloudscape-renderer/actions/workflows/ci.yml/badge.svg)](https://github.com/golevishal/aui-cloudscape-renderer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
@@ -99,27 +99,20 @@ The `$/deployment/message` expression binds reactively — when a `DATA_MODEL_UP
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│  AG-UI Event Stream (WebSocket / SSE / Mock)    │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-         ┌─────────────────┐
-         │  ProtocolBridge  │  Routes events by type
-         └──┬───┬───┬───┬──┘
-            │   │   │   │
-     ┌──────┘   │   │   └─────────────┐
-     ▼          ▼   ▼                 ▼
-  A2UI      Surface  Table     TraceSidebar
-  Renderer  Renderer Renderer  (tool calls)
-     │
-     ▼
-  Recursive catalog
-  component tree
-     │
-     ▼
-  Cloudscape Design System
+```mermaid
+flowchart TD
+    A["AG-UI Event Stream\n(WebSocket / SSE / Mock)"] --> B["ProtocolBridge\nRoutes events by type"]
+    B --> C["A2UIRenderer\nRecursive catalog tree"]
+    B --> D["SurfaceRenderer\nHITL forms + validation"]
+    B --> E["A2UITableRenderer\nAuto-columns + status icons"]
+    B --> F["TraceSidebar\nTool-call trace"]
+    C --> G["Cloudscape Design System"]
+    D --> G
+    E --> G
+
+    style A fill:#232f3e,color:#ff9900,stroke:#ff9900
+    style B fill:#232f3e,color:#fff,stroke:#527fff
+    style G fill:#232f3e,color:#ff9900,stroke:#ff9900
 ```
 
 Built with **Vite**, **React 19**, **TypeScript 5.9**, and `@cloudscape-design/components`.
