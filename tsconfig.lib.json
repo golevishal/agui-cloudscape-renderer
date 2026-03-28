@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationDir": "./dist-lib",
+    "emitDeclarationOnly": true,
+    "allowImportingTsExtensions": false
+  },
+  "include": ["src"],
+  "exclude": ["src/main.tsx", "src/pages/**", "src/test/**", "src/**/*.test.*"]
+}
