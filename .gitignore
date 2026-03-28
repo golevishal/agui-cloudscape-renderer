@@ -1,6 +1,9 @@
 # Dependencies
 node_modules
 
+# AI agent tooling (local only)
+.agent/
+
 # Build output
 dist
 dist-ssr
